@@ -7,6 +7,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Ma BD">
 <title>Ma Collection BD</title>
+<!-- Home screen icon: replace the href URL with your own 180×180 PNG hosted anywhere -->
+<link rel="apple-touch-icon" sizes="180x180" href="icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icon.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -124,10 +129,7 @@ body{display:flex;flex-direction:column;overflow:hidden}
 .b-owned{background:var(--success-bg);color:var(--success)}
 .b-miss{background:var(--danger-bg);color:var(--danger)}
 .b-warn{background:var(--warning-bg);color:var(--warning-text)}
-.check-btn{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border2);
-  background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;color:var(--text3);font-size:14px;transition:all .15s}
-.check-btn.on{background:var(--success);border-color:var(--success);color:#fff}
+/* check-btn removed — acquired col removed from Manquants */
 .chevron{color:var(--text3);font-size:18px;flex-shrink:0}
 .empty{text-align:center;padding:70px 24px;color:var(--text3)}
 .empty-icon{font-size:40px;margin-bottom:12px}
@@ -212,11 +214,18 @@ body{display:flex;flex-direction:column;overflow:hidden}
 .cover-preview-placeholder{color:var(--text3);font-size:13px;text-align:center;padding:16px}
 
 /* ─── FAB ─── */
-.fab{position:fixed;bottom:calc(var(--safe-bottom)+20px);right:20px;width:54px;height:54px;
-  border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:26px;cursor:pointer;
+/* Fixed to bottom-right of the main-col, not the whole viewport,
+   so it never sits on top of the topbar or tabs */
+.fab-wrap{position:relative;flex-shrink:0;height:0;overflow:visible}
+.fab{position:absolute;bottom:calc(var(--safe-bottom) + 20px);right:20px;
+  width:54px;height:54px;border-radius:50%;
+  background:var(--accent);color:#fff;border:none;font-size:26px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 16px rgba(26,78,140,.35);z-index:40}
-/* ensure overlays always appear above FAB */
+  box-shadow:0 4px 16px rgba(26,78,140,.35);z-index:40;
+  transform:translateY(-74px); /* lift above bottom edge of list */
+}
+@media(min-width:768px){.fab{right:24px}}
+/* overlays always above FAB */
 .overlay{z-index:100!important}
 .page-overlay{z-index:200!important}
 
@@ -305,10 +314,12 @@ body{display:flex;flex-direction:column;overflow:hidden}
   <!-- List -->
   <div class="list" id="list"></div>
 
-</div><!-- /main-col -->
+  <!-- FAB lives here so it can never overlap the topbar -->
+  <div class="fab-wrap">
+    <button class="fab" id="fab" onclick="openAdd()">+</button>
+  </div>
 
-<!-- FAB -->
-<button class="fab" id="fab" onclick="openAdd()">+</button>
+</div><!-- /main-col -->
 
 <!-- Detail bottom sheet -->
 <div class="overlay" id="overlay" onclick="overlayBgClick(event)">
@@ -375,7 +386,7 @@ async function syncData(){
     const data=await res.json();
     ownedData=data.owned||[];
     missingData=data.missing||[];
-    missingData.forEach(m=>{m.acquired=m.acquired===true||m.acquired==='TRUE'||m.acquired==='true'});
+    // acquired column removed from Manquants sheet
     updateCounts();render();toast('Synchronisé ✓');
   }catch(e){toast('Erreur de synchronisation');console.error(e)}
   if(btn)btn.classList.remove('spinning');
@@ -401,12 +412,12 @@ function toast(msg,dur=2200){
 }
 function updateCounts(){
   const oc=ownedData.length?`(${ownedData.length})`:'';
-  const mc=missingData.filter(m=>!m.acquired).length;
+  const mc=missingData.length;
   const mct=mc?`(${mc})`:'';
-  ['cnt-owned'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=oc});
-  ['cnt-missing'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=mct});
+  const el1=document.getElementById('cnt-owned');if(el1)el1.textContent=oc;
+  const el2=document.getElementById('cnt-missing');if(el2)el2.textContent=mct;
   const sc=document.getElementById('sidebar-counts');
-  if(sc)sc.textContent=`${ownedData.length} albums · ${mc} manquants`;
+  if(sc)sc.textContent=`${ownedData.length} possédés · ${mc} manquants`;
 }
 function syncSearch(inp){
   document.getElementById('search').value=inp.value;render();
@@ -540,61 +551,61 @@ function rowMissing(item){
   const tome=item.tome&&item.tome!=='-'?` — T.${item.tome}`:'';
   const title=(item.missing||item.title||'')+tome;
   const priBadge=item.priority==='★★★'?'b-miss':item.priority==='★★'?'b-warn':'b-pub';
-  const strike=item.acquired?'style="text-decoration:line-through;opacity:.5"':'';
-  // Use same cover thumbnail as Possédés; overlay a small status dot
   const c=pubColor(item.publisher||'');
+  // Same cover style as Possédés, with a red dot indicator
   const coverEl=item.cover_url
-    ?`<div class="cover-wrap" style="width:40px;height:56px;position:relative;opacity:${item.acquired?'0.5':'1'}">
+    ?`<div class="cover-wrap" style="width:40px;height:56px;position:relative">
         <img src="${esc(item.cover_url)}" loading="lazy" alt=""
-          onerror="this.parentNode.style.background='${c.bg}';this.outerHTML='<div class=cover-spine style=color:${c.fg}>${initials(item.series||'')}</div>'">
-        <div style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;
-          background:${item.acquired?'var(--success)':'var(--danger)'};border:1.5px solid #fff"></div>
+          onerror="this.parentNode.style.background='${c.bg}';this.outerHTML='<div class=cover-spine style=color:${c.fg};width:40px;height:56px>${initials(item.series||'')}</div>'">
+        <div style="position:absolute;bottom:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--danger);border:1.5px solid #fff"></div>
       </div>`
-    :`<div class="cover-wrap" style="width:40px;height:56px;background:${c.bg};position:relative;opacity:${item.acquired?'0.5':'1'}">
+    :`<div class="cover-wrap" style="width:40px;height:56px;background:${c.bg};position:relative">
         <div class="cover-spine" style="color:${c.fg}">${initials(item.series||'?')}</div>
-        <div style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;
-          background:${item.acquired?'var(--success)':'var(--danger)'};border:1.5px solid #fff"></div>
+        <div style="position:absolute;bottom:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--danger);border:1.5px solid #fff"></div>
       </div>`;
   return `<div class="book-item" onclick="openDetail('${esc(item.id)}','missing')">
     ${coverEl}
     <div class="book-info">
-      <div class="book-title" ${strike}>${esc(title)}</div>
+      <div class="book-title">${esc(title)}</div>
       <div class="book-sub">${esc(item.authors||'')}</div>
       <div class="badges">
         <span class="badge b-pub">${esc(item.publisher||'')}</span>
         <span class="badge ${priBadge}">${esc(item.priority||'')}</span>
-        ${item.acquired?'<span class="badge b-owned">Acquis ✓</span>':''}
+        <span class="badge b-miss">Manquant</span>
       </div>
     </div>
-    <button class="check-btn ${item.acquired?'on':''}" onclick="toggleAcquired(event,'${esc(item.id)}')">✓</button>
+    <span class="chevron">›</span>
   </div>`;
 }
 
 // ── Stats ────────────────────────────────────────────────────
 function renderStats(){
   document.getElementById('list').innerHTML='';
-  const acq=missingData.filter(m=>m.acquired).length;
   const serC={};ownedData.forEach(b=>{serC[b.series]=(serC[b.series]||0)+1});
   const pubC={};ownedData.forEach(b=>{pubC[b.publisher]=(pubC[b.publisher]||0)+1});
+  // Completion per series (owned vs missing)
   const allS=[...new Set([...ownedData.map(b=>b.series),...missingData.map(b=>b.series)])].sort();
   const comp=allS.map(s=>{
-    const o=serC[s]||0,m=missingData.filter(x=>x.series===s&&!x.acquired).length;
+    const o=serC[s]||0,m=missingData.filter(x=>x.series===s).length;
     const t=o+m,p=t>0?Math.round(o/t*100):100;
     return{series:s,owned:o,missing:m,total:t,pct:p};
   }).filter(d=>d.total>0).sort((a,b)=>b.pct-a.pct);
-  const pByPri={'★★★':0,'★★':0,'★':0},sByPri={'★★★':0,'★★':0,'★':0};
-  missingData.filter(m=>m.acquired).forEach(m=>{pByPri[m.priority]=(pByPri[m.priority]||0)+1});
-  missingData.filter(m=>!m.acquired).forEach(m=>{sByPri[m.priority]=(sByPri[m.priority]||0)+1});
+  // Priority breakdown
+  const sByPri={'★★★':0,'★★':0,'★':0};
+  missingData.forEach(m=>{sByPri[m.priority]=(sByPri[m.priority]||0)+1});
   const topP=Object.entries(pubC).sort((a,b)=>b[1]-a[1]);
+  // Top 10 series for bar chart
+  const topSeries=Object.entries(serC).sort((a,b)=>b[1]-a[1]).slice(0,10);
 
   document.getElementById('list').innerHTML=`
     <div class="stats-scroll">
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-num">${ownedData.length}</div><div class="stat-lbl">Possédés</div></div>
-        <div class="stat-card"><div class="stat-num">${missingData.length-acq}</div><div class="stat-lbl">Manquants</div></div>
+        <div class="stat-card"><div class="stat-num">${missingData.length}</div><div class="stat-lbl">Manquants</div></div>
         <div class="stat-card"><div class="stat-num">${Object.keys(serC).length}</div><div class="stat-lbl">Séries</div></div>
-        <div class="stat-card"><div class="stat-num">${acq}</div><div class="stat-lbl">Acquis récemment</div></div>
+        <div class="stat-card"><div class="stat-num">${Object.keys(pubC).length}</div><div class="stat-lbl">Éditeurs</div></div>
       </div>
+      <div class="chart-card"><div class="chart-title">Albums par série (top 10)</div><div class="chart-wrap" style="height:260px"><canvas id="chartSeries"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Par éditeur</div><div class="chart-wrap"><canvas id="chartPub"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Manquants par priorité</div><div class="chart-wrap"><canvas id="chartProg"></canvas></div></div>
       <div class="comp-card">
@@ -611,24 +622,46 @@ function renderStats(){
   setTimeout(()=>{
     const dk=window.matchMedia('(prefers-color-scheme:dark)').matches;
     const tc=dk?'#9a9990':'#6b6a64',gc=dk?'rgba(255,255,255,.06)':'rgba(0,0,0,.06)';
+
+    // Bar chart — top series
     if(chartPub)chartPub.destroy();
-    chartPub=new Chart(document.getElementById('chartPub'),{
+    const ctxS=document.getElementById('chartSeries');
+    if(ctxS) new Chart(ctxS,{
+      type:'bar',
+      data:{
+        labels:topSeries.map(([s])=>s.length>18?s.slice(0,16)+'…':s),
+        datasets:[{data:topSeries.map(([,n])=>n),
+          backgroundColor:topSeries.map(([s])=>pubColor(ownedData.find(b=>b.series===s)?.publisher||'').bar+'cc'),
+          borderRadius:4}]
+      },
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:tc,stepSize:1},grid:{color:gc},beginAtZero:true},
+                y:{ticks:{color:tc,font:{size:10}},grid:{display:false}}}}
+    });
+
+    // Donut — publishers
+    const ctxP=document.getElementById('chartPub');
+    if(ctxP)chartPub=new Chart(ctxP,{
       type:'doughnut',
       data:{labels:topP.map(([p])=>p),datasets:[{data:topP.map(([,n])=>n),
         backgroundColor:topP.map(([p])=>pubColor(p).bar),borderWidth:2,borderColor:dk?'#1c1c1a':'#fff'}]},
       options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
         plugins:{legend:{position:'right',labels:{color:tc,font:{size:11},boxWidth:12,padding:8}}}}
     });
+
+    // Bar chart — missing by priority
     if(chartProgress)chartProgress.destroy();
-    chartProgress=new Chart(document.getElementById('chartProg'),{
+    const ctxPr=document.getElementById('chartProg');
+    if(ctxPr)chartProgress=new Chart(ctxPr,{
       type:'bar',
-      data:{labels:['★★★','★★','★'],datasets:[
-        {label:'Manquant',data:[sByPri['★★★'],sByPri['★★'],sByPri['★']],backgroundColor:'#c0000088',borderRadius:4},
-        {label:'Acquis',data:[pByPri['★★★'],pByPri['★★'],pByPri['★']],backgroundColor:'#1a6b3a88',borderRadius:4}
+      data:{labels:['★★★ Urgent','★★ Souhaité','★ Optionnel'],datasets:[
+        {label:'Manquant',data:[sByPri['★★★'],sByPri['★★'],sByPri['★']],backgroundColor:'#c0000088',borderRadius:4}
       ]},
       options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{labels:{color:tc,font:{size:11}}}},
-        scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc,stepSize:1},grid:{color:gc},beginAtZero:true}}}
+        plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:tc,font:{size:11}},grid:{color:gc}},
+                y:{ticks:{color:tc,stepSize:1},grid:{color:gc},beginAtZero:true}}}
     });
   },100);
 }
@@ -665,9 +698,15 @@ function openDetail(id,type){
   const c=pubColor(item.publisher||'');
   const tome=item.tome&&item.tome!=='-'?item.tome:'—';
 
-  // Cover section
+  // Cover section — contain (show full cover), text below
   const coverSection=item.cover_url
-    ?`<img src="${esc(item.cover_url)}" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:var(--radius);margin-bottom:20px;display:block">`
+    ?`<div style="width:100%;background:var(--surface2);border-radius:var(--radius);
+        margin-bottom:20px;display:flex;align-items:center;justify-content:center;
+        padding:12px;min-height:200px;max-height:320px;overflow:hidden">
+        <img src="${esc(item.cover_url)}" alt=""
+          style="max-width:100%;max-height:296px;object-fit:contain;border-radius:6px;
+                 box-shadow:0 4px 20px rgba(0,0,0,.25);display:block">
+      </div>`
     :`<div style="width:100%;height:160px;border-radius:var(--radius);margin-bottom:20px;
         background:${c.bg};display:flex;align-items:center;justify-content:center;
         font-size:48px;font-weight:700;color:${c.fg}">${initials(item.series||'?')}</div>`;
@@ -696,14 +735,13 @@ function openDetail(id,type){
       <div class="sheet-row"><span class="s-label">Priorité</span><span class="s-val">${esc(item.priority||'—')}</span></div>
       ${item.notes?`<div class="sheet-row"><span class="s-label">Notes</span><span class="s-val">${esc(item.notes)}</span></div>`:''}
       <div class="sheet-row"><span class="s-label">Statut</span>
-        <span class="s-val" style="color:${item.acquired?'var(--success)':'var(--danger)'}">${item.acquired?'Acquis ✓':'Non acquis'}</span>
+        <span class="s-val" style="color:var(--danger)">Manquant</span>
       </div>`;
     actions=`
       <div style="display:flex;gap:10px;margin-top:24px;flex-wrap:wrap">
         <button class="btn-ghost"  onclick="closePage();setTimeout(()=>openEdit('${esc(id)}','missing'),50)">✏️ Éditer</button>
-        <button class="btn-move"   onclick="moveItem('${esc(id)}','missing')">→ Possédés</button>
-        <button class="btn-main"   onclick="toggleAcquiredDetail('${esc(id)}')">${item.acquired?'Non acquis':'✓ Acquis'}</button>
-        <button class="btn-danger" onclick="deleteItem('${esc(id)}','missing')">🗑</button>
+        <button class="btn-move"   onclick="moveItem('${esc(id)}','missing')">✓ Acquis → Possédés</button>
+        <button class="btn-danger" onclick="deleteItem('${esc(id)}','missing')">🗑 Supprimer</button>
       </div>`;
   }
 
@@ -733,7 +771,7 @@ async function moveItem(id,fromType){
     // Convert to missing format
     const newItem={id:'m'+Date.now(),series:item.series,missing:item.title,
       tome:item.tome||'-',publisher:item.publisher,authors:item.authors,
-      priority:'★★',acquired:false,notes:item.notes||''};
+      priority:'★★',notes:item.notes||''};
     ownedData=ownedData.filter(i=>String(i.id)!==String(id));
     missingData.push(newItem);
     closePage();updateCounts();render();
@@ -876,7 +914,7 @@ async function saveNew(isM){
   if(isM){
     const pp=document.getElementById('f-priority');
     const item={id,series,missing:title,tome,publisher:pub,authors:auth,
-      priority:pp?pp.value:'★★',acquired:false,notes};
+      priority:pp?pp.value:'★★',notes};
     missingData.push(item);closePage();updateCounts();render();
     await post({action:'add_missing',item});
   }else{
@@ -892,27 +930,7 @@ async function saveNew(isM){
 // ── Actions ───────────────────────────────────────────────────
 function v(id){const el=document.getElementById(id);return el?el.value.trim():''}
 
-async function toggleAcquiredDetail(id){
-  const item=missingData.find(i=>String(i.id)===String(id));if(!item)return;
-  item.acquired=!item.acquired;
-  closePage();updateCounts();render();
-  await post({action:'toggle_acquired',id,value:item.acquired});
-  toast(item.acquired?'Marqué acquis ✓':'Marqué non acquis');
-}
-
-async function toggleAcquired(e,id){
-  e.stopPropagation();
-  const item=missingData.find(i=>String(i.id)===String(id));if(!item)return;
-  item.acquired=!item.acquired;updateCounts();render();
-  await post({action:'toggle_acquired',id,value:item.acquired});
-  toast(item.acquired?'Marqué acquis ✓':'Marqué non acquis');
-}
-async function toggleAcquiredFromDetail(id){
-  const item=missingData.find(i=>String(i.id)===String(id));if(!item)return;
-  item.acquired=!item.acquired;closeSheet();updateCounts();render();
-  await post({action:'toggle_acquired',id,value:item.acquired});
-  toast(item.acquired?'Marqué acquis ✓':'Marqué non acquis');
-}
+// acquired column removed — use → Possédés button to mark as obtained
 async function deleteItem(id,type){
   if(!confirm('Supprimer cet album ?'))return;
   if(type==='owned')ownedData=ownedData.filter(i=>String(i.id)!==String(id));
