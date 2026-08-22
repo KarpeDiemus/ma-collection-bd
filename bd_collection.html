@@ -67,31 +67,34 @@ body{display:flex;flex-direction:column;overflow:hidden}
 /* ─── Main column ─── */
 .main-col{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 
-/* ─── Topbar (phone) ─── */
+/* ─── Topbar — 2 rows ─── */
 .topbar{background:var(--surface);border-bottom:.5px solid var(--border2);
-  padding:calc(var(--safe-top) + 12px) 16px 0;flex-shrink:0;z-index:10}
-.topbar-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.topbar-row h1{font-size:19px;font-weight:700;letter-spacing:-.3px}
-.sync-btn{width:34px;height:34px;border-radius:50%;border:.5px solid var(--border2);
+  padding:calc(var(--safe-top) + 8px) 12px 0;flex-shrink:0;z-index:10}
+/* Row 1: icon+name | search | sync | config */
+.topbar-r1{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.app-brand{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.app-brand h1{font-size:16px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.topbar-search{flex:1;position:relative;min-width:0}
+.topbar-search svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);
+  color:var(--text3);pointer-events:none;flex-shrink:0}
+.topbar-search input{width:100%;padding:7px 8px 7px 28px;border-radius:var(--radius);
+  border:.5px solid var(--border2);background:var(--surface2);
+  font-size:14px;color:var(--text);outline:none}
+.topbar-search input:focus{border-color:var(--accent)}
+.icon-btn{width:32px;height:32px;border-radius:50%;border:.5px solid var(--border2);
   background:var(--surface2);display:flex;align-items:center;justify-content:center;
-  cursor:pointer;font-size:17px;color:var(--text2);flex-shrink:0}
-.sync-btn.spinning{animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ─── Search ─── */
-.search-wrap{position:relative;margin-bottom:12px}
-.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
-.search-inp{width:100%;padding:9px 10px 9px 34px;border-radius:var(--radius);
-  border:.5px solid var(--border2);background:var(--surface2);font-size:15px;color:var(--text);outline:none}
-.search-inp:focus{border-color:var(--accent)}
-.ipad-search{display:none;padding:12px 20px;background:var(--surface);border-bottom:.5px solid var(--border2)}
-.ipad-search .search-wrap{margin-bottom:0}
-
-/* ─── Tabs (phone) ─── */
-.tabs{display:flex;background:var(--surface);border-bottom:.5px solid var(--border2);flex-shrink:0}
-.tab{flex:1;padding:10px 4px;font-size:12px;color:var(--text2);background:none;border:none;
-  border-bottom:2px solid transparent;cursor:pointer;font-weight:400;transition:all .15s}
+  cursor:pointer;font-size:15px;color:var(--text2);flex-shrink:0}
+.icon-btn.spinning{animation:spin 1s linear infinite}
+/* Row 2: tabs + BDthèque */
+.topbar-r2{display:flex;align-items:center;border-top:.5px solid var(--border)}
+.tab{flex:1;padding:9px 4px;font-size:12px;color:var(--text2);background:none;border:none;
+  border-bottom:2px solid transparent;cursor:pointer;font-weight:400;transition:all .15s;
+  white-space:nowrap}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.bdtheque-btn{display:flex;align-items:center;gap:4px;padding:6px 10px;flex-shrink:0;
+  border-left:.5px solid var(--border2);
+  font-size:12px;font-weight:600;color:var(--accent-text);text-decoration:none;
+  white-space:nowrap;background:none}
 
 /* ─── Series filter: SELECT dropdown (no scroll conflict) ─── */
 .series-bar{padding:8px 16px;background:var(--surface2);border-bottom:.5px solid var(--border);flex-shrink:0}
@@ -282,55 +285,60 @@ body{display:flex;flex-direction:column;overflow:hidden}
 <div class="sidebar">
   <div class="sidebar-logo"><img src="icon.png" style="width:28px;height:28px;border-radius:6px;vertical-align:middle;margin-right:8px" onerror="this.style.display='none'">Mes BD<small id="sidebar-counts"></small></div>
   <div class="sidebar-nav">
-    <button class="snav-btn active" id="snav-owned"  onclick="switchTab('owned',this)">📖 Possédés</button>
-    <button class="snav-btn"        id="snav-missing" onclick="switchTab('missing',this)">📋 Manquants</button>
-    <button class="snav-btn"        id="snav-stats"   onclick="switchTab('stats',this)">📊 Stats</button>
-    <button class="snav-btn"        id="snav-config"  onclick="switchTab('config',this)">⚙️ Configuration</button>
+    <button class="snav-btn active" id="snav-owned"   onclick="switchTab('owned',this)">📖 Possédés</button>
+    <button class="snav-btn"        id="snav-missing"  onclick="switchTab('missing',this)">📋 Manquants</button>
+    <button class="snav-btn"        id="snav-stats"    onclick="switchTab('stats',this)">📊 Stats</button>
+    <a class="snav-btn" href="https://www.bedetheque.com" target="_blank" rel="noopener"
+       style="text-decoration:none">📖 BDthèque</a>
   </div>
-  <div class="sidebar-bottom"><button onclick="syncData()">↻ Synchroniser</button></div>
+  <div class="sidebar-bottom">
+    <button onclick="syncData()">↻ Synchroniser</button>
+    <button onclick="toggleConfigPanel()" style="margin-top:8px">⚙ Configuration</button>
+  </div>
 </div>
 
 <!-- Main col -->
 <div class="main-col">
 
-  <!-- Phone topbar -->
+  <!-- Topbar: 2 compact rows -->
   <div class="topbar">
-    <div class="topbar-row">
-      <h1 style="display:flex;align-items:center;gap:8px">
-        <img src="icon.png" style="width:28px;height:28px;border-radius:6px;flex-shrink:0" onerror="this.style.display='none'">
-        Mes BD
-      </h1>
-      <button class="sync-btn" id="sync-btn" onclick="syncData()">↻</button>
+    <!-- Row 1: brand | search | sync | config -->
+    <div class="topbar-r1">
+      <div class="app-brand">
+        <img src="icon.png" style="width:26px;height:26px;border-radius:6px;flex-shrink:0"
+             onerror="this.style.display='none'">
+        <h1>Mes BD</h1>
+      </div>
+      <div class="topbar-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input id="search" type="search" placeholder="Rechercher…" oninput="render()">
+      </div>
+      <button class="icon-btn spinning-target" id="sync-btn" onclick="syncData()" title="Synchroniser">↻</button>
+      <button class="icon-btn" onclick="toggleConfigPanel()" title="Configuration">⚙</button>
     </div>
-    <!-- BDthèque link on its own row, left-aligned -->
-    <div style="margin-bottom:10px">
-      <a href="https://www.bedetheque.com" target="_blank" rel="noopener"
-         style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;
-                border-radius:var(--radius);background:var(--accent-bg);
-                border:.5px solid var(--border2);font-size:12px;font-weight:600;
-                color:var(--accent-text);text-decoration:none">
-        📖 BDthèque
-      </a>
-    </div>
-    <div class="search-wrap">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input id="search" class="search-inp" type="search" placeholder="Rechercher…" oninput="render()">
+    <!-- Row 2: tabs + BDthèque -->
+    <div class="topbar-r2">
+      <button class="tab active" id="tab-owned"   onclick="switchTab('owned',this)">Possédés <span id="cnt-owned"></span></button>
+      <button class="tab"        id="tab-missing"  onclick="switchTab('missing',this)">Manquants <span id="cnt-missing"></span></button>
+      <button class="tab"        id="tab-stats"    onclick="switchTab('stats',this)">Stats</button>
+      <a class="bdtheque-btn" href="https://www.bedetheque.com" target="_blank" rel="noopener">📖 BDthèque</a>
     </div>
   </div>
 
-  <!-- Phone tabs -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('owned',this)">Possédés <span id="cnt-owned"></span></button>
-    <button class="tab"        onclick="switchTab('missing',this)">Manquants <span id="cnt-missing"></span></button>
-    <button class="tab"        onclick="switchTab('stats',this)">Stats</button>
-    <button class="tab"        onclick="switchTab('config',this)">⚙</button>
-  </div>
-
-  <!-- iPad search -->
-  <div class="ipad-search">
-    <div class="search-wrap">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input id="search2" class="search-inp" type="search" placeholder="Rechercher titre, série, auteur…" oninput="syncSearch(this)">
+  <!-- Inline config panel -->
+  <div id="config-panel" style="display:none;background:var(--surface);border-bottom:.5px solid var(--border2);padding:12px 16px;flex-shrink:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:13px;font-weight:600">Google Sheet URL</span>
+      <span id="cfg-badge" class="cfg-badge"></span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <input class="form-field" id="cfg-url" type="url"
+             style="margin:0;flex:1;font-size:13px;padding:8px 10px"
+             placeholder="https://script.google.com/macros/s/…/exec">
+      <button class="btn-main" style="flex-shrink:0;padding:8px 14px;font-size:13px"
+              onclick="updateConfig()">OK</button>
     </div>
   </div>
 
@@ -398,16 +406,14 @@ function initials(s){return(String(s||'').split(/\s+/).filter(w=>w.length>2).sli
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
 // ── Config ───────────────────────────────────────────────────
-function saveConfig(){
-  const url=document.getElementById('setup-url').value.trim();
-  if(!url.startsWith('https://script.google.com')){toast('URL invalide');return}
-  SCRIPT_URL=url;localStorage.setItem(SCRIPT_URL_KEY,url);
-  document.getElementById('setup-screen').style.display='none';
-  toast('Connecté ✓');syncData();
-}
 function checkSetup(){
-  if(!SCRIPT_URL)document.getElementById('setup-screen').style.display='flex';
-  else{document.getElementById('setup-screen').style.display='none';syncData()}
+  if(!SCRIPT_URL){
+    document.getElementById('setup-screen').style.display='flex';
+  } else {
+    document.getElementById('setup-screen').style.display='none';
+    updateConfigBadge();
+    syncData();
+  }
 }
 
 // ── Sync ────────────────────────────────────────────────────
@@ -419,11 +425,9 @@ async function syncData(){
     const res=await fetch(SCRIPT_URL+'?t='+Date.now());
     if(!res.ok)throw new Error('HTTP '+res.status);
     const data=await res.json();
-    // Support both old format (owned/missing) and new unified format (albums)
     if(data.albums){
       albums=data.albums;
     } else {
-      // Legacy: merge old two-sheet format into unified array
       const o=(data.owned||[]).map(i=>({...i,type:'possede',title:i.title||i.missing||''}));
       const m=(data.missing||[]).map(i=>({...i,type:'manquant',title:i.title||i.missing||''}));
       albums=[...o,...m];
@@ -457,30 +461,50 @@ function updateCounts(){
   const sc=document.getElementById('sidebar-counts');
   if(sc)sc.textContent=`${oc} possédés · ${mc} manquants`;
 }
-function syncSearch(inp){
-  document.getElementById('search').value=inp.value;render();
-}
-function getQ(){return(document.getElementById('search').value||'').toLowerCase()}
+function getQ(){return(document.getElementById('search')?.value||'').toLowerCase()}
 
 function switchTab(tab,el){
   currentTab=tab;activeFilter='Tous';
-  // Reset series dropdown to "Tous"
-  const sel=document.getElementById('series-select');
-  if(sel)sel.value='Tous';
-  // Reset search
+  // Reset series dropdown and search
+  const sel=document.getElementById('series-select');if(sel)sel.value='Tous';
   const s1=document.getElementById('search');if(s1)s1.value='';
-  const s2=document.getElementById('search2');if(s2)s2.value='';
   // Scroll list to top
   const list=document.getElementById('list');if(list)list.scrollTop=0;
-  // Update phone tabs
+  // Hide config panel when switching tabs
+  const cp=document.getElementById('config-panel');if(cp)cp.style.display='none';
+  // Phone tabs — find by id pattern
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  if(el&&el.classList.contains('tab'))el.classList.add('active');
-  // Update sidebar
+  const tb=document.getElementById('tab-'+tab);if(tb)tb.classList.add('active');
+  // Sidebar
   document.querySelectorAll('.snav-btn').forEach(t=>t.classList.remove('active'));
   const sb=document.getElementById('snav-'+tab);if(sb)sb.classList.add('active');
   const fw=document.getElementById('fab-wrap');
-  if(fw)fw.style.display=(tab==='stats'||tab==='config')?'none':'flex';
+  if(fw)fw.style.display=(tab==='stats')?'none':'flex';
   render();
+}
+
+function toggleConfigPanel(){
+  const cp=document.getElementById('config-panel');
+  if(!cp)return;
+  const visible=cp.style.display!=='none';
+  cp.style.display=visible?'none':'block';
+  if(!visible){
+    // Populate URL and badge when opening
+    const inp=document.getElementById('cfg-url');if(inp)inp.value=SCRIPT_URL||'';
+    updateConfigBadge();
+  }
+}
+
+function updateConfigBadge(){
+  const badge=document.getElementById('cfg-badge');
+  if(!badge)return;
+  if(SCRIPT_URL){
+    badge.textContent='Connecté';
+    badge.className='cfg-badge ok';
+  }else{
+    badge.textContent='Non connecté';
+    badge.className='cfg-badge ko';
+  }
 }
 function setFilter(val){activeFilter=val;render()}
 function overlayBgClick(e){if(e.target===document.getElementById('overlay'))closeSheet()}
@@ -708,25 +732,33 @@ function renderStats(){
 
 // ── Config ───────────────────────────────────────────────────
 function renderConfig(){
-  const conn=!!SCRIPT_URL;
+  // Config is now the inline panel — just show list as empty
   document.getElementById('list').innerHTML=`
-    <div style="padding:20px 16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <span style="font-size:16px;font-weight:600">Google Sheet</span>
-        <span class="cfg-badge ${conn?'ok':'ko'}">${conn?'Connecté':'Non connecté'}</span>
-      </div>
-      <label class="form-label">URL Web App</label>
-      <input class="form-field" id="cfg-url" type="url" value="${esc(SCRIPT_URL)}" placeholder="https://script.google.com/macros/s/…/exec">
-      <button class="btn-main" style="width:100%;margin-top:8px" onclick="updateConfig()">Mettre à jour</button>
-      ${conn?`<button class="btn-ghost" style="width:100%;margin-top:10px" onclick="syncData()">↻ Synchroniser</button>`:''}
-    </div>`;
+    <div class="empty"><div class="empty-icon">⚙️</div>
+    <p style="font-size:14px">Ouvre le panneau ⚙ en haut pour configurer la connexion Google Sheet.</p></div>`;
 }
+
 function updateConfig(){
-  const url=document.getElementById('cfg-url').value.trim();
-  if(!url){SCRIPT_URL='';localStorage.removeItem(SCRIPT_URL_KEY);toast('Déconnecté');render();return}
+  const url=(document.getElementById('cfg-url')||{}).value?.trim()||'';
+  if(!url){
+    SCRIPT_URL='';localStorage.removeItem(SCRIPT_URL_KEY);
+    toast('Déconnecté');updateConfigBadge();return;
+  }
   if(!url.startsWith('https://script.google.com')){toast('URL invalide');return}
   SCRIPT_URL=url;localStorage.setItem(SCRIPT_URL_KEY,url);
-  toast('URL mise à jour ✓');syncData();
+  updateConfigBadge();
+  toast('Connecté ✓');
+  document.getElementById('config-panel').style.display='none';
+  syncData();
+}
+
+function saveConfig(){
+  const url=(document.getElementById('setup-url')||{}).value?.trim()||'';
+  if(!url.startsWith('https://script.google.com')){toast('URL invalide');return}
+  SCRIPT_URL=url;localStorage.setItem(SCRIPT_URL_KEY,url);
+  document.getElementById('setup-screen').style.display='none';
+  updateConfigBadge();
+  toast('Connecté ✓');syncData();
 }
 
 // ── Detail — full page ────────────────────────────────────────
