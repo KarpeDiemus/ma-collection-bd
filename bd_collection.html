@@ -32,6 +32,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,'Helvetica Neue',sans-serif}
+body{position:relative} /* needed for absolute page-overlay */
 
 /* ─── App shell: phone = flex column, iPad = flex row ─── */
 body{display:flex;flex-direction:column;overflow:hidden}
@@ -153,23 +154,31 @@ body{display:flex;flex-direction:column;overflow:hidden}
 
 /* ─── Full-page edit screen ─── */
 .page-overlay{
-  position:fixed;inset:0;z-index:200;
+  position:absolute;         /* not fixed — lets iOS push view up for keyboard */
+  left:0;right:0;width:100%;max-width:100%;overflow-x:hidden;
+  z-index:200;
   background:var(--bg);
-  display:none;flex-direction:column;
-  overflow:hidden;
+  display:none;
+  flex-direction:column;
+  min-height:100%;           /* fill at least the viewport */
+  overflow-y:auto;           /* page-overlay itself scrolls, not page-body */
+  -webkit-overflow-scrolling:touch;
 }
 .page-overlay.open{display:flex}
 .page-topbar{
   background:var(--surface);border-bottom:.5px solid var(--border2);
   padding:calc(var(--safe-top) + 12px) 16px 12px;
   display:flex;align-items:center;gap:12px;flex-shrink:0;
+  position:sticky;top:0;z-index:5;  /* topbar stays visible while scrolling form */
 }
 .page-topbar-title{font-size:17px;font-weight:600;flex:1}
 .back-btn{padding:6px 14px;border-radius:var(--radius);background:none;
   border:.5px solid var(--border2);color:var(--text2);font-size:14px;cursor:pointer}
 .save-btn{padding:6px 16px;border-radius:var(--radius);background:var(--accent);
   color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer}
-.page-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 20px calc(var(--safe-bottom)+24px)}
+.page-body{flex:1;padding:20px 20px calc(var(--safe-bottom)+40px);max-width:100%}
+/* Detail content inner wrapper — prevents text touching edges */
+.detail-inner{padding:0 4px}
 
 /* ─── Bottom sheet (detail only) ─── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:flex-end;justify-content:center}
@@ -200,6 +209,20 @@ body{display:flex;flex-direction:column;overflow:hidden}
 .btn-move{padding:12px 14px;border-radius:var(--radius);background:var(--warning-bg);
   color:var(--warning-text);border:none;font-size:14px;cursor:pointer;white-space:nowrap}
 
+/* ─── Cover lookup ─── */
+.cover-lookup-btn{width:100%;padding:10px;border-radius:var(--radius);
+  background:var(--accent-bg);border:.5px solid var(--border2);
+  color:var(--accent-text);font-size:14px;font-weight:600;cursor:pointer;
+  margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:6px}
+.cover-results{display:flex;gap:10px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}
+.cover-results::-webkit-scrollbar{display:none}
+.cover-option{flex-shrink:0;width:90px;cursor:pointer;border-radius:var(--radius);
+  overflow:hidden;border:2px solid transparent;transition:border-color .15s}
+.cover-option.selected{border-color:var(--accent)}
+.cover-option img{width:90px;height:126px;object-fit:cover;display:block}
+.cover-option-label{font-size:9px;color:var(--text2);text-align:center;padding:3px 2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--surface2)}
+
 /* ─── Forms ─── */
 .form-field{width:100%;margin-bottom:12px;font-size:15px;padding:11px 13px;border-radius:var(--radius);
   border:.5px solid var(--border2);background:var(--surface);color:var(--text);outline:none;-webkit-appearance:none}
@@ -214,23 +237,17 @@ body{display:flex;flex-direction:column;overflow:hidden}
 .cover-preview-placeholder{color:var(--text3);font-size:13px;text-align:center;padding:16px}
 
 /* ─── FAB ─── */
-/* Fixed to bottom-right of the main-col, not the whole viewport,
-   so it never sits on top of the topbar or tabs */
-.fab-wrap{position:relative;flex-shrink:0;height:0;overflow:visible}
-.fab{position:absolute;bottom:calc(var(--safe-bottom) + 20px);right:20px;
-  width:54px;height:54px;border-radius:50%;
+.fab-wrap{pointer-events:none;position:fixed;bottom:0;left:0;right:0;z-index:40;
+  display:flex;justify-content:flex-end;
+  padding:0 20px calc(var(--safe-bottom) + 16px)}
+.fab{pointer-events:all;width:54px;height:54px;border-radius:50%;
   background:var(--accent);color:#fff;border:none;font-size:26px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 16px rgba(26,78,140,.35);z-index:40;
-  transform:translateY(-74px); /* lift above bottom edge of list */
-}
-@media(min-width:768px){.fab{right:24px}}
-/* overlays always above FAB */
-.overlay{z-index:100!important}
-.page-overlay{z-index:200!important}
+  box-shadow:0 4px 16px rgba(26,78,140,.35)}
+@media(min-width:768px){.fab-wrap{padding-right:28px}}
 
 /* ─── Toast ─── */
-.toast{position:fixed;bottom:calc(var(--safe-bottom)+88px);left:50%;transform:translateX(-50%);
+.toast{position:fixed;bottom:calc(var(--safe-bottom) + 24px);left:50%;transform:translateX(-50%);
   background:#222;color:#fff;font-size:13px;padding:9px 18px;border-radius:20px;
   opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap;z-index:999}
 .toast.show{opacity:1}
@@ -283,16 +300,17 @@ body{display:flex;flex-direction:column;overflow:hidden}
         <img src="icon.png" style="width:28px;height:28px;border-radius:6px;flex-shrink:0" onerror="this.style.display='none'">
         Mes BD
       </h1>
-      <div style="display:flex;align-items:center;gap:8px">
-        <a href="https://www.bedetheque.com" target="_blank" rel="noopener"
-           style="display:flex;align-items:center;padding:6px 10px;border-radius:var(--radius);
-                  background:var(--surface2);border:.5px solid var(--border2);
-                  font-size:12px;font-weight:600;color:var(--accent-text);text-decoration:none;
-                  white-space:nowrap">
-          BDthèque
-        </a>
-        <button class="sync-btn" id="sync-btn" onclick="syncData()">↻</button>
-      </div>
+      <button class="sync-btn" id="sync-btn" onclick="syncData()">↻</button>
+    </div>
+    <!-- BDthèque link on its own row, left-aligned -->
+    <div style="margin-bottom:10px">
+      <a href="https://www.bedetheque.com" target="_blank" rel="noopener"
+         style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;
+                border-radius:var(--radius);background:var(--accent-bg);
+                border:.5px solid var(--border2);font-size:12px;font-weight:600;
+                color:var(--accent-text);text-decoration:none">
+        📖 BDthèque
+      </a>
     </div>
     <div class="search-wrap">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -326,12 +344,12 @@ body{display:flex;flex-direction:column;overflow:hidden}
   <!-- List -->
   <div class="list" id="list"></div>
 
-  <!-- FAB lives here so it can never overlap the topbar -->
-  <div class="fab-wrap">
-    <button class="fab" id="fab" onclick="openAdd()">+</button>
-  </div>
-
 </div><!-- /main-col -->
+
+<!-- FAB — fixed to bottom-right, z-index below overlays -->
+<div class="fab-wrap" id="fab-wrap">
+  <button class="fab" id="fab" onclick="openAdd()">+</button>
+</div>
 
 <!-- Detail bottom sheet -->
 <div class="overlay" id="overlay" onclick="overlayBgClick(event)">
@@ -460,7 +478,8 @@ function switchTab(tab,el){
   // Update sidebar
   document.querySelectorAll('.snav-btn').forEach(t=>t.classList.remove('active'));
   const sb=document.getElementById('snav-'+tab);if(sb)sb.classList.add('active');
-  document.getElementById('fab').style.display=(tab==='stats'||tab==='config')?'none':'flex';
+  const fw=document.getElementById('fab-wrap');
+  if(fw)fw.style.display=(tab==='stats'||tab==='config')?'none':'flex';
   render();
 }
 function setFilter(val){activeFilter=val;render()}
@@ -471,8 +490,9 @@ function closeSheet(){document.getElementById('overlay').classList.remove('open'
 function openPage(title,bodyHTML,saveFn){
   document.getElementById('page-title').textContent=title;
   document.getElementById('page-body').innerHTML=bodyHTML;
-  document.getElementById('page-overlay').classList.add('open');
-  document.getElementById('page-body').scrollTop=0;
+  const overlay=document.getElementById('page-overlay');
+  overlay.classList.add('open');
+  overlay.scrollTop=0;  /* scroll the overlay, not page-body */
   pageSaveFn=saveFn;
 }
 function closePage(){
@@ -766,11 +786,11 @@ function openDetail(id,type){
   }
 
   const title=type==='owned'?item.title:(item.missing||item.title||'');
-  const body=`${coverSection}
+  const body=`<div class="detail-inner">${coverSection}
     <h2 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px">${esc(title)}</h2>
     <p style="font-size:14px;color:var(--accent-text);margin-bottom:20px">${esc(item.series)}</p>
     <div style="border-top:.5px solid var(--border)">${rows}</div>
-    ${actions}`;
+    ${actions}</div>`;
 
   openPage('', body, null);
   // Hide save button — detail page has its own action buttons
@@ -806,10 +826,12 @@ function openEdit(id,type){
     const cv=item.cover_url||'';
     body=`
       <div id="cpw" class="cover-preview">
-        ${cv?`<img src="${esc(cv)}" alt="">`:'<div class="cover-preview-placeholder">📸 Collez une URL de couverture</div>'}
+        ${cv?`<img src="${esc(cv)}" alt="">`:'<div class="cover-preview-placeholder">📸 Chercher ou coller une URL</div>'}
       </div>
-      <label class="form-label">URL Couverture</label>
-      <input class="form-field" id="e-cover" type="url" value="${esc(cv)}" placeholder="https://…" oninput="previewCover(this.value)">
+      <button class="cover-lookup-btn" onclick="lookupCover('e')">🔍 Chercher sur BDthèque</button>
+      <div id="cover-results-wrap"></div>
+      <label class="form-label">URL Couverture (manuel)</label>
+      <input class="form-field" id="e-cover" type="url" value="${esc(cv)}" placeholder="https://…" oninput="previewCover(this.value,'cpw')">
       <label class="form-label">Série *</label>
       <input class="form-field" id="e-series" value="${esc(item.series||'')}">
       <label class="form-label">Titre *</label>
@@ -849,11 +871,104 @@ function openEdit(id,type){
   }
 }
 
-function previewCover(url){
-  const w=document.getElementById('cpw');if(!w)return;
+function previewCover(url, wrapId='cpw'){
+  const w=document.getElementById(wrapId);if(!w)return;
   w.innerHTML=url
     ?`<img src="${esc(url)}" onerror="this.parentNode.innerHTML='<div class=cover-preview-placeholder>URL invalide</div>'">`
-    :'<div class="cover-preview-placeholder">📸 Collez une URL de couverture</div>';
+    :'<div class="cover-preview-placeholder">📸 Chercher ou coller une URL</div>';
+}
+
+// ── BDthèque cover lookup via Claude API ──────────────────────
+async function lookupCover(prefix){
+  const series = (document.getElementById(prefix+'-series')||{}).value?.trim() || '';
+  const title  = (document.getElementById(prefix+'-title')||{}).value?.trim() || '';
+  const tome   = (document.getElementById(prefix+'-tome')||{}).value?.trim() || '';
+  if(!series && !title){ toast('Remplis Série et/ou Titre d\'abord'); return; }
+
+  const wrap = document.getElementById('cover-results-wrap');
+  wrap.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text2);font-size:13px">
+    🔍 Recherche en cours sur BDthèque…</div>`;
+
+  const query = [series, title, tome].filter(Boolean).join(' ');
+  const bdUrl = `https://www.bedetheque.com/recherche/albums?RechRecherche=${encodeURIComponent(query)}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: `Tu es un assistant qui recherche des couvertures de BD sur bedetheque.com.
+Réponds UNIQUEMENT en JSON valide, sans texte autour, avec ce format exact:
+{"results":[{"title":"Titre exact","url":"https://…image.jpg","source":"BDthèque"}]}
+Maximum 4 résultats. URLs d'images directes uniquement (jpg/png/webp).
+Si aucun résultat: {"results":[]}`,
+        messages: [{
+          role: 'user',
+          content: `Cherche la couverture de la BD: "${query}" sur bedetheque.com.
+URL de recherche: ${bdUrl}
+Trouve les URLs directes des images de couverture (format .jpg/.png).
+Retourne uniquement du JSON valide.`
+        }]
+      })
+    });
+
+    const data = await res.json();
+    // Extract text content from response (may include tool use blocks)
+    const textBlock = data.content?.find(b => b.type === 'text');
+    const text = textBlock?.text || '';
+
+    let parsed;
+    try {
+      // Extract JSON from response even if there's surrounding text
+      const match = text.match(/\{[\s\S]*"results"[\s\S]*\}/);
+      parsed = JSON.parse(match ? match[0] : text);
+    } catch(_) {
+      parsed = { results: [] };
+    }
+
+    const results = parsed.results || [];
+    if (!results.length) {
+      wrap.innerHTML = `<div style="text-align:center;padding:12px;color:var(--text2);font-size:13px">
+        Aucune couverture trouvée. <a href="${bdUrl}" target="_blank"
+        style="color:var(--accent-text)">Chercher manuellement</a></div>`;
+      return;
+    }
+
+    wrap.innerHTML = `
+      <p style="font-size:11px;color:var(--text2);margin-bottom:6px">
+        Sélectionne une couverture :</p>
+      <div class="cover-results" id="cover-options">
+        ${results.map((r,i) => `
+          <div class="cover-option" id="copt-${i}" onclick="selectCover('${esc(r.url)}','${prefix}',${i},${results.length})">
+            <img src="${esc(r.url)}" alt="${esc(r.title)}"
+              onerror="this.parentNode.style.display='none'">
+            <div class="cover-option-label">${esc(r.title||'')}</div>
+          </div>`).join('')}
+      </div>
+      <button class="btn-ghost" style="width:100%;margin-bottom:10px;font-size:13px"
+        onclick="document.getElementById('cover-results-wrap').innerHTML=''">✕ Fermer</button>`;
+
+  } catch(e) {
+    console.error(e);
+    wrap.innerHTML = `<div style="text-align:center;padding:12px;color:var(--danger);font-size:13px">
+      Erreur de recherche. <a href="${bdUrl}" target="_blank"
+      style="color:var(--accent-text)">Ouvrir BDthèque</a></div>`;
+  }
+}
+
+function selectCover(url, prefix, idx, total){
+  // Highlight selected
+  for(let i=0;i<total;i++){
+    const el=document.getElementById('copt-'+i);
+    if(el)el.classList.toggle('selected', i===idx);
+  }
+  // Set the URL input and preview
+  const inp=document.getElementById(prefix+'-cover');
+  if(inp){ inp.value=url; previewCover(url,'cpw'); }
+  toast('Couverture sélectionnée ✓');
 }
 
 async function saveEdit(id,type){
@@ -880,9 +995,11 @@ async function saveEdit(id,type){
 function openAdd(){
   const isM=currentTab==='missing';
   const body=`
-    ${!isM?`<div id="cpw" class="cover-preview"><div class="cover-preview-placeholder">📸 URL de couverture ci-dessous</div></div>
-    <label class="form-label">URL Couverture</label>
-    <input class="form-field" id="f-cover" type="url" placeholder="https://…" oninput="previewCover(this.value)">`:''}
+    ${!isM?`<div id="cpw" class="cover-preview"><div class="cover-preview-placeholder">📸 Chercher ou coller une URL</div></div>
+    <button class="cover-lookup-btn" onclick="lookupCover('f')">🔍 Chercher sur BDthèque</button>
+    <div id="cover-results-wrap"></div>
+    <label class="form-label">URL Couverture (manuel)</label>
+    <input class="form-field" id="f-cover" type="url" placeholder="https://…" oninput="previewCover(this.value,'cpw')">`:''}
     <label class="form-label">Série *</label>
     <input class="form-field" id="f-series" placeholder="ex. Blake &amp; Mortimer">
     <label class="form-label">Titre *</label>
