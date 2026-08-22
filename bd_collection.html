@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ma BD">
-<title>Ma Collection BD</title>
+<meta name="apple-mobile-web-app-title" content="Mes BD">
+<title>Mes BD</title>
 <!-- Home screen icon: replace the href URL with your own 180×180 PNG hosted anywhere -->
 <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
 <link rel="apple-touch-icon" sizes="152x152" href="icon.png">
@@ -169,7 +169,7 @@ body{display:flex;flex-direction:column;overflow:hidden}
   border:.5px solid var(--border2);color:var(--text2);font-size:14px;cursor:pointer}
 .save-btn{padding:6px 16px;border-radius:var(--radius);background:var(--accent);
   color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer}
-.page-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px calc(var(--safe-bottom)+20px)}
+.page-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 20px calc(var(--safe-bottom)+24px)}
 
 /* ─── Bottom sheet (detail only) ─── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:flex-end;justify-content:center}
@@ -263,7 +263,7 @@ body{display:flex;flex-direction:column;overflow:hidden}
 
 <!-- iPad sidebar -->
 <div class="sidebar">
-  <div class="sidebar-logo">📚 Ma Collection BD<small id="sidebar-counts"></small></div>
+  <div class="sidebar-logo"><img src="icon.png" style="width:28px;height:28px;border-radius:6px;vertical-align:middle;margin-right:8px" onerror="this.style.display='none'">Mes BD<small id="sidebar-counts"></small></div>
   <div class="sidebar-nav">
     <button class="snav-btn active" id="snav-owned"  onclick="switchTab('owned',this)">📖 Possédés</button>
     <button class="snav-btn"        id="snav-missing" onclick="switchTab('missing',this)">📋 Manquants</button>
@@ -279,8 +279,20 @@ body{display:flex;flex-direction:column;overflow:hidden}
   <!-- Phone topbar -->
   <div class="topbar">
     <div class="topbar-row">
-      <h1>📚 Ma Collection BD</h1>
-      <button class="sync-btn" id="sync-btn" onclick="syncData()">↻</button>
+      <h1 style="display:flex;align-items:center;gap:8px">
+        <img src="icon.png" style="width:28px;height:28px;border-radius:6px;flex-shrink:0" onerror="this.style.display='none'">
+        Mes BD
+      </h1>
+      <div style="display:flex;align-items:center;gap:8px">
+        <a href="https://www.bedetheque.com" target="_blank" rel="noopener"
+           style="display:flex;align-items:center;padding:6px 10px;border-radius:var(--radius);
+                  background:var(--surface2);border:.5px solid var(--border2);
+                  font-size:12px;font-weight:600;color:var(--accent-text);text-decoration:none;
+                  white-space:nowrap">
+          BDthèque
+        </a>
+        <button class="sync-btn" id="sync-btn" onclick="syncData()">↻</button>
+      </div>
     </div>
     <div class="search-wrap">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -342,9 +354,14 @@ body{display:flex;flex-direction:column;overflow:hidden}
 // ── State ────────────────────────────────────────────────────
 const SCRIPT_URL_KEY='bd_script_url';
 let SCRIPT_URL=localStorage.getItem(SCRIPT_URL_KEY)||'';
-let ownedData=[],missingData=[];
+// Single unified array — each item has a "type" field: "possede" or "manquant"
+let albums=[];
 let currentTab='owned',activeFilter='Tous';
 let chartPub=null,chartProgress=null;
+
+// Convenience views
+function ownedData(){return albums.filter(a=>a.type==='possede')}
+function missingData(){return albums.filter(a=>a.type==='manquant')}
 let pageSaveFn=null; // fn to call when save-btn tapped
 
 // ── Publisher colours ────────────────────────────────────────
@@ -384,18 +401,23 @@ async function syncData(){
     const res=await fetch(SCRIPT_URL+'?t='+Date.now());
     if(!res.ok)throw new Error('HTTP '+res.status);
     const data=await res.json();
-    ownedData=data.owned||[];
-    missingData=data.missing||[];
-    // acquired column removed from Manquants sheet
+    // Support both old format (owned/missing) and new unified format (albums)
+    if(data.albums){
+      albums=data.albums;
+    } else {
+      // Legacy: merge old two-sheet format into unified array
+      const o=(data.owned||[]).map(i=>({...i,type:'possede',title:i.title||i.missing||''}));
+      const m=(data.missing||[]).map(i=>({...i,type:'manquant',title:i.title||i.missing||''}));
+      albums=[...o,...m];
+    }
     updateCounts();render();toast('Synchronisé ✓');
   }catch(e){toast('Erreur de synchronisation');console.error(e)}
   if(btn)btn.classList.remove('spinning');
 }
+
 async function post(body){
   if(!SCRIPT_URL)return;
   try{
-    // Send as form-encoded to avoid iOS Safari CORS preflight block.
-    // The JSON payload is in the field "payload".
     await fetch(SCRIPT_URL,{
       method:'POST',
       headers:{'Content-Type':'application/x-www-form-urlencoded'},
@@ -411,13 +433,11 @@ function toast(msg,dur=2200){
   setTimeout(()=>t.classList.remove('show'),dur);
 }
 function updateCounts(){
-  const oc=ownedData.length?`(${ownedData.length})`:'';
-  const mc=missingData.length;
-  const mct=mc?`(${mc})`:'';
-  const el1=document.getElementById('cnt-owned');if(el1)el1.textContent=oc;
-  const el2=document.getElementById('cnt-missing');if(el2)el2.textContent=mct;
+  const oc=ownedData().length,mc=missingData().length;
+  const el1=document.getElementById('cnt-owned');if(el1)el1.textContent=oc?`(${oc})`:'';
+  const el2=document.getElementById('cnt-missing');if(el2)el2.textContent=mc?`(${mc})`:'';
   const sc=document.getElementById('sidebar-counts');
-  if(sc)sc.textContent=`${ownedData.length} possédés · ${mc} manquants`;
+  if(sc)sc.textContent=`${oc} possédés · ${mc} manquants`;
 }
 function syncSearch(inp){
   document.getElementById('search').value=inp.value;render();
@@ -501,7 +521,7 @@ function renderSeriesBar(){
     document.getElementById('series-bar').style.display='none';return;
   }
   document.getElementById('series-bar').style.display='block';
-  const data=currentTab==='owned'?ownedData:missingData;
+  const data=currentTab==='owned'?ownedData():missingData();
   const series=[...new Set(data.map(d=>d.series))].sort();
   const sel=document.getElementById('series-select');
   const cur=sel.value;
@@ -518,7 +538,7 @@ function render(){
   renderSeriesBar();
   if(currentTab==='stats'){renderStats();return}
   if(currentTab==='config'){renderConfig();return}
-  const data=currentTab==='owned'?ownedData:missingData;
+  const data=currentTab==='owned'?ownedData():missingData();
   const filtered=filterData(data);
   const groups=groupBy(filtered,'series');
   const list=document.getElementById('list');
@@ -581,18 +601,18 @@ function rowMissing(item){
 // ── Stats ────────────────────────────────────────────────────
 function renderStats(){
   document.getElementById('list').innerHTML='';
-  const serC={};ownedData.forEach(b=>{serC[b.series]=(serC[b.series]||0)+1});
-  const pubC={};ownedData.forEach(b=>{pubC[b.publisher]=(pubC[b.publisher]||0)+1});
+  const serC={};ownedData().forEach(b=>{serC[b.series]=(serC[b.series]||0)+1});
+  const pubC={};ownedData().forEach(b=>{pubC[b.publisher]=(pubC[b.publisher]||0)+1});
   // Completion per series (owned vs missing)
-  const allS=[...new Set([...ownedData.map(b=>b.series),...missingData.map(b=>b.series)])].sort();
+  const allS=[...new Set([...ownedData().map(b=>b.series),...missingData().map(b=>b.series)])].sort();
   const comp=allS.map(s=>{
-    const o=serC[s]||0,m=missingData.filter(x=>x.series===s).length;
+    const o=serC[s]||0,m=missingData().filter(x=>x.series===s).length;
     const t=o+m,p=t>0?Math.round(o/t*100):100;
     return{series:s,owned:o,missing:m,total:t,pct:p};
   }).filter(d=>d.total>0).sort((a,b)=>b.pct-a.pct);
   // Priority breakdown
   const sByPri={'★★★':0,'★★':0,'★':0};
-  missingData.forEach(m=>{sByPri[m.priority]=(sByPri[m.priority]||0)+1});
+  missingData().forEach(m=>{sByPri[m.priority]=(sByPri[m.priority]||0)+1});
   const topP=Object.entries(pubC).sort((a,b)=>b[1]-a[1]);
   // Top 10 series for bar chart
   const topSeries=Object.entries(serC).sort((a,b)=>b[1]-a[1]).slice(0,10);
@@ -600,8 +620,8 @@ function renderStats(){
   document.getElementById('list').innerHTML=`
     <div class="stats-scroll">
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-num">${ownedData.length}</div><div class="stat-lbl">Possédés</div></div>
-        <div class="stat-card"><div class="stat-num">${missingData.length}</div><div class="stat-lbl">Manquants</div></div>
+        <div class="stat-card"><div class="stat-num">${ownedData().length}</div><div class="stat-lbl">Possédés</div></div>
+        <div class="stat-card"><div class="stat-num">${missingData().length}</div><div class="stat-lbl">Manquants</div></div>
         <div class="stat-card"><div class="stat-num">${Object.keys(serC).length}</div><div class="stat-lbl">Séries</div></div>
         <div class="stat-card"><div class="stat-num">${Object.keys(pubC).length}</div><div class="stat-lbl">Éditeurs</div></div>
       </div>
@@ -631,7 +651,7 @@ function renderStats(){
       data:{
         labels:topSeries.map(([s])=>s.length>18?s.slice(0,16)+'…':s),
         datasets:[{data:topSeries.map(([,n])=>n),
-          backgroundColor:topSeries.map(([s])=>pubColor(ownedData.find(b=>b.series===s)?.publisher||'').bar+'cc'),
+          backgroundColor:topSeries.map(([s])=>pubColor(ownedData().find(b=>b.series===s)?.publisher||'').bar+'cc'),
           borderRadius:4}]
       },
       options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
@@ -692,8 +712,8 @@ function updateConfig(){
 // ── Detail — full page ────────────────────────────────────────
 function openDetail(id,type){
   const item=type==='owned'
-    ?ownedData.find(i=>String(i.id)===String(id))
-    :missingData.find(i=>String(i.id)===String(id));
+    ?ownedData().find(i=>String(i.id)===String(id))
+    :missingData().find(i=>String(i.id)===String(id));
   if(!item)return;
   const c=pubColor(item.publisher||'');
   const tome=item.tome&&item.tome!=='-'?item.tome:'—';
@@ -764,40 +784,22 @@ function openPageWithSave(title,body,fn){
   openPage(title,body,fn);
 }
 
-// ── Move between tabs ─────────────────────────────────────────
+// ── Move between tabs — just flips the type flag, preserves everything incl. cover_url
 async function moveItem(id,fromType){
-  if(fromType==='owned'){
-    const item=ownedData.find(i=>String(i.id)===String(id));if(!item)return;
-    // Convert to missing format
-    const newItem={id:'m'+Date.now(),series:item.series,missing:item.title,
-      tome:item.tome||'-',publisher:item.publisher,authors:item.authors,
-      priority:'★★',notes:item.notes||''};
-    ownedData=ownedData.filter(i=>String(i.id)!==String(id));
-    missingData.push(newItem);
-    closePage();updateCounts();render();
-    await post({action:'delete',id,type:'owned'});
-    await post({action:'add_missing',item:newItem});
-    toast('Déplacé vers Manquants');
-  }else{
-    const item=missingData.find(i=>String(i.id)===String(id));if(!item)return;
-    // Convert to owned format
-    const newItem={id:'o'+Date.now(),series:item.series,title:item.missing||item.title||'',
-      tome:item.tome||'-',publisher:item.publisher,authors:item.authors,
-      shelf:'Manuel',notes:item.notes||'',cover_url:''};
-    missingData=missingData.filter(i=>String(i.id)!==String(id));
-    ownedData.push(newItem);
-    closePage();updateCounts();render();
-    await post({action:'delete',id,type:'missing'});
-    await post({action:'add_owned',item:newItem});
-    toast('Déplacé vers Possédés ✓');
-  }
+  const item=albums.find(i=>String(i.id)===String(id));if(!item)return;
+  const newType=fromType==='owned'?'manquant':'possede';
+  item.type=newType;
+  if(newType==='manquant'&&!item.priority)item.priority='★★';
+  closePage();updateCounts();render();
+  await post({action:'update',id,fields:{type:newType,priority:item.priority||''}});
+  toast(newType==='possede'?'Déplacé vers Possédés ✓':'Déplacé vers Manquants');
 }
 
 // ── Edit — full page ──────────────────────────────────────────
 function openEdit(id,type){
   const item=type==='owned'
-    ?ownedData.find(i=>String(i.id)===String(id))
-    :missingData.find(i=>String(i.id)===String(id));
+    ?ownedData().find(i=>String(i.id)===String(id))
+    :missingData().find(i=>String(i.id)===String(id));
   if(!item)return;
   let body='';
   if(type==='owned'){
@@ -855,26 +857,22 @@ function previewCover(url){
 }
 
 async function saveEdit(id,type){
+  const item=albums.find(i=>String(i.id)===String(id));if(!item)return;
+  item.series=v('e-series');
+  item.title=v('e-title');
+  item.tome=v('e-tome')||'-';
+  item.publisher=v('e-pub');
+  item.authors=v('e-authors');
+  item.notes=v('e-notes');
   if(type==='owned'){
-    const item=ownedData.find(i=>String(i.id)===String(id));if(!item)return;
-    item.series=v('e-series');item.title=v('e-title');
-    item.tome=v('e-tome')||'-';item.publisher=v('e-pub');
-    item.authors=v('e-authors');item.notes=v('e-notes');
     item.cover_url=v('e-cover');
     if(!item.series||!item.title){toast('Série et titre requis');return}
-    closePage();render();
-    await post({action:'save_owned',data:ownedData});
   }else{
-    const item=missingData.find(i=>String(i.id)===String(id));if(!item)return;
-    item.series=v('e-series');item.missing=v('e-title');
-    item.tome=v('e-tome')||'-';item.publisher=v('e-pub');
-    item.authors=v('e-authors');
     const pp=document.getElementById('e-priority');if(pp)item.priority=pp.value;
-    item.notes=v('e-notes');
-    if(!item.series||!item.missing){toast('Série et titre requis');return}
-    closePage();render();
-    await post({action:'save_missing',data:missingData});
+    if(!item.series||!item.title){toast('Série et titre requis');return}
   }
+  closePage();render();
+  await post({action:'save_all',data:albums});
   toast('Modifié ✓');
 }
 
@@ -909,21 +907,18 @@ function openAdd(){
 async function saveNew(isM){
   const series=v('f-series'),title=v('f-title');
   if(!series||!title){toast('Série et titre requis');return}
-  const id=(isM?'m':'o')+Date.now();
+  const id='bd'+Date.now();
   const tome=v('f-tome')||'-',pub=v('f-pub'),auth=v('f-authors'),notes=v('f-notes');
-  if(isM){
-    const pp=document.getElementById('f-priority');
-    const item={id,series,missing:title,tome,publisher:pub,authors:auth,
-      priority:pp?pp.value:'★★',notes};
-    missingData.push(item);closePage();updateCounts();render();
-    await post({action:'add_missing',item});
-  }else{
-    const fc=document.getElementById('f-cover');
-    const item={id,series,title,tome,publisher:pub,authors:auth,
-      shelf:'Manuel',notes,cover_url:fc?fc.value.trim():''};
-    ownedData.push(item);closePage();updateCounts();render();
-    await post({action:'add_owned',item});
-  }
+  const fc=document.getElementById('f-cover');
+  const pp=document.getElementById('f-priority');
+  const item={
+    id, type:isM?'manquant':'possede',
+    series, title, tome, publisher:pub, authors:auth,
+    priority:isM?(pp?pp.value:'★★'):'',
+    notes, cover_url:fc?fc.value.trim():''
+  };
+  albums.push(item);closePage();updateCounts();render();
+  await post({action:'add',item});
   toast('Ajouté ✓');
 }
 
@@ -933,10 +928,9 @@ function v(id){const el=document.getElementById(id);return el?el.value.trim():''
 // acquired column removed — use → Possédés button to mark as obtained
 async function deleteItem(id,type){
   if(!confirm('Supprimer cet album ?'))return;
-  if(type==='owned')ownedData=ownedData.filter(i=>String(i.id)!==String(id));
-  else missingData=missingData.filter(i=>String(i.id)!==String(id));
-  closePage();closeSheet();updateCounts();render();
-  await post({action:'delete',id,type});
+  albums=albums.filter(i=>String(i.id)!==String(id));
+  closePage();updateCounts();render();
+  await post({action:'delete',id});
   toast('Supprimé');
 }
 
